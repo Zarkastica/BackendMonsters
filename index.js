@@ -3,7 +3,7 @@ require('dotenv').config();
 //requerir el modulo de express
 const express = require('express');
 const conectardb = require('./config/db')
-const router = require('./routes/Disfraces')
+const api = require('./routes/api.routes')
 const cors = require('cors')
 const app = express()
 
@@ -15,12 +15,7 @@ const PORT = 3000;
 //definimos una ruta para el servidor
 
 app.use(express.json()); //middleware para leer datos en formato json
-app.use('/api',router)
-
-app.get('/', (req, res) => {
-    res.send('Hola mundo desde mi primer servidor en express');
-})
-
+app.use('/',api);
 
 //iniciar el servidor y escuchar en el puerto indicado
 

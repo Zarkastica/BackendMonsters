@@ -1,10 +1,10 @@
 const express = require('express')
 const router = express.Router()
-const Itemcontroller = require('../controllers/Itemcontroller')
+const {AgregarDisfraz,traerDisfraz,traerDisfrazPorId,actualizarDisfrazPorId,eliminarDisfrazPorId} = require('./../controllers/disfraz.controller')
 
-router.post('/Disfraz',Itemcontroller.AgregarDisfraz)
-router.get('/Disfraz',Itemcontroller.traerDisfraz)
-router.get('/Disfraz/:id',Itemcontroller.traerDisfrazPorId)
-router.put('/Disfraz/:id',Itemcontroller.actualizarDisfrazPorId)
-router.delete('/Disfraz/:id',Itemcontroller.eliminarDisfrazPorId)
+router.post('/Disfraz',AgregarDisfraz)
+router.get('/Disfraz',traerDisfraz)
+router.get('/Disfraz/:id',traerDisfrazPorId)
+router.put('/Disfraz/:id',actualizarDisfrazPorId)
+router.delete('/Disfraz/:id',eliminarDisfrazPorId)
 module.exports = router

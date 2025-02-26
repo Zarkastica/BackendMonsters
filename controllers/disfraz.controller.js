@@ -1,6 +1,6 @@
 const Disfraz = require('../models/disfraz.model')
 
-exports.AgregarDisfraz = async (req, res) => {
+const AgregarDisfraz = async (req, res) => {
     try {
         let data_Disfraz = new Disfraz(req.body)
         await data_Disfraz.save()
@@ -11,7 +11,7 @@ exports.AgregarDisfraz = async (req, res) => {
     }
 }
 
-exports.traerDisfraz = async (req, res)=>{
+const traerDisfraz = async (req, res)=>{
     try {
         let data_Disfraz = await Disfraz.find()
         res.json(data_Disfraz)
@@ -23,7 +23,7 @@ exports.traerDisfraz = async (req, res)=>{
 }
 
 
-exports.traerDisfrazPorId = async (req,res) => {
+const traerDisfrazPorId = async (req,res) => {
     try {
         let data_Disfraz = await Disfraz.findById(req.params.id)
         if(!data_Disfraz){
@@ -37,7 +37,7 @@ exports.traerDisfrazPorId = async (req,res) => {
     }
 }
 
-exports.actualizarDisfrazPorId = async (req,res) =>{
+const actualizarDisfrazPorId = async (req,res) =>{
     try {
         let data_Disfraz = await Disfraz.findByIdAndUpdate(req.params.id,req.body)
         if(!data_Disfraz){
@@ -50,7 +50,7 @@ exports.actualizarDisfrazPorId = async (req,res) =>{
     }
 }
 
-exports.eliminarDisfrazPorId = async (req,res) =>{
+const eliminarDisfrazPorId = async (req,res) =>{
     try {
         let data_Disfraz = await Disfraz.findByIdAndDelete(req.params.id)
         if(!data_Disfraz){
@@ -62,3 +62,5 @@ exports.eliminarDisfrazPorId = async (req,res) =>{
         res.status(500).send('Hubo un error con el servidor :(')
     }
 }
+
+module.exports = {AgregarDisfraz,traerDisfraz,traerDisfrazPorId,actualizarDisfrazPorId,eliminarDisfrazPorId};
