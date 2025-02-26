@@ -1,4 +1,4 @@
-const Disfraz = require('../models/Disfraz')
+const Disfraz = require('../models/disfraz.model')
 
 exports.AgregarDisfraz = async (req, res) => {
     try {
