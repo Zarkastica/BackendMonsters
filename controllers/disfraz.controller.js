@@ -31,7 +31,7 @@ const AgregarDisfraz = async (req, res) => {
 
 const traerDisfraz = async (req, res)=>{
     try {
-        const disfraces = await Disfraz.find();
+        const disfraces = await Disfraz.find().populate('categoria');
         return res.status(200).json({disfraces});
     
     } catch (error) {
@@ -82,7 +82,7 @@ const eliminarDisfrazPorId = async (req,res) =>{
 }
 
 function saveImage(file){
-    const newPath = `./uploads/${file.originalName}`;
+    const newPath = `./uploads/${file.originalname}`;
     fs.renameSync(file.path, newPath);
     return newPath;
 }
