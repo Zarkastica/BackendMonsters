@@ -10,5 +10,5 @@ const parentPath = '/api';
 router.use(parentPath, user);
 router.use(parentPath, categoria);  
 router.use(parentPath, disfraz);
-
+//TEST
 module.exports = router;
