@@ -1,9 +1,25 @@
-const Disfraz = require('../models/disfraz.model')
+const Disfraz = require('../models/disfraz.model');
+const Categoria = require('../models/categoria.model');
+const multer = require('multer');
+const upload = multer({dest: 'uploads/'});
 
 const AgregarDisfraz = async (req, res) => {
+    const {nombre, talla, color, precio, categoria} = req.body;
     try {
-        let data_Disfraz = new Disfraz(req.body)
+        const cat = await Categoria.findOne({nombre: categoria});
+        if (!cat) {
+            return res.status(404).json({msg: 'La categoría no existe'});
+        } 
+        let data_Disfraz = new Disfraz({
+            nombre,
+            talla,
+            color,
+            precio,
+            categoria: cat._id,
+            imagen: req.file.path
+        });
         await data_Disfraz.save()
+        data_Disfraz.populate('categoria');
         res.send(data_Disfraz)
     } catch (error) {
         console.log(error)
