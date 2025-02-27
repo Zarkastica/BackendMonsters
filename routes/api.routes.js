@@ -9,6 +9,7 @@ const parentPath = '/api';
 
 router.use(parentPath, user);
 router.use(parentPath, categoria);  
+router.use(parentPath+'/imagen/', express.static('uploads'));
 router.use(parentPath, disfraz);
 //TEST
 module.exports = router;

@@ -1,5 +1,6 @@
 const Disfraz = require('../models/disfraz.model');
 const Categoria = require('../models/categoria.model');
+const fs = require('fs');
 const multer = require('multer');
 const upload = multer({dest: 'uploads/'});
 
@@ -9,14 +10,15 @@ const AgregarDisfraz = async (req, res) => {
         const cat = await Categoria.findOne({nombre: categoria});
         if (!cat) {
             return res.status(404).json({msg: 'La categoría no existe'});
-        } 
+        }
+        saveImage(req.file);
         let data_Disfraz = new Disfraz({
             nombre,
             talla,
             color,
             precio,
             categoria: cat._id,
-            imagen: req.file.path
+            imagen: req.file.originalname
         });
         await data_Disfraz.save()
         data_Disfraz.populate('categoria');
@@ -29,12 +31,12 @@ const AgregarDisfraz = async (req, res) => {
 
 const traerDisfraz = async (req, res)=>{
     try {
-        let data_Disfraz = await Disfraz.find()
-        res.json(data_Disfraz)
+        const disfraces = await Disfraz.find();
+        return res.status(200).json({disfraces});
     
     } catch (error) {
-        console.log(error)
-        res.status(500).send('Hubo un error en el servidor')
+        console.log(error);
+        return res.status(500).send('Hubo un error en el servidor');
     }
 }
 
@@ -79,4 +81,16 @@ const eliminarDisfrazPorId = async (req,res) =>{
     }
 }
 
-module.exports = {AgregarDisfraz,traerDisfraz,traerDisfrazPorId,actualizarDisfrazPorId,eliminarDisfrazPorId};
+function saveImage(file){
+    const newPath = `./uploads/${file.originalName}`;
+    fs.renameSync(file.path, newPath);
+    return newPath;
+}
+
+const getImage = (req, res) => {
+    const {imagen} = req.params.name;
+    const readStream = fs.createReadStream(`uploads/${imagen}`);
+    readStream.pipe(res);
+}
+
+module.exports = {AgregarDisfraz,traerDisfraz,traerDisfrazPorId,actualizarDisfrazPorId,eliminarDisfrazPorId,getImage};

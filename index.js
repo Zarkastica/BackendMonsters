@@ -13,14 +13,15 @@ app.use(cors())
 const PORT = 3000;
 
 //definimos una ruta para el servidor
-
+app.use(express.urlencoded({extended:true})); //middleware para leer datos de un formulario
 app.use(express.json()); //middleware para leer datos en formato json
 app.use('/',api);
+
+app.get('i')
 
 //iniciar el servidor y escuchar en el puerto indicado
 
 app.listen(PORT, () =>  {
   console.log(`Servidor corriendo en el puerto ${PORT}`);  
 })
-
 
