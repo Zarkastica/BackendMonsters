@@ -27,19 +27,20 @@ const readAllCategorias = async (req, res) => {
 }
 
 const updateCategoria = async (req, res) => {
+    const { id } = req.params;
     const { nombre } = req.body;
-    console.log(nombre);
 
     try {
-        await Categoria.updateOne({ nombre }, {
-            nombre: nombre,
-        });
-        return res.status(200).json({ msg: 'Categoria actualizada exitosamente' });
+        const categoria = await Categoria.findByIdAndUpdate(id, { nombre }, { new: true });
+        if (!categoria) {
+            return res.status(404).json({ msg: 'Categoria no encontrada' });
+        }
+
+        res.json({ msg: 'Categoria actualizada exitosamente', categoria });
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ msg: 'Error inesperado' });
+        res.status(500).json({ msg: 'Error al actualizar la categoria' });
     }
-}
+};
 
 const deleteCategoria = async (req, res) => {
     const { _id } = { _id: req.params.id };
