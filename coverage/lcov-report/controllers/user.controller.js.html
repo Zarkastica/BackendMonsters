@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">94.28% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>66/70</span>
+                <span class='fraction'>70/70</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">83.33% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>20/24</span>
+                <span class='fraction'>24/24</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">94.28% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>66/70</span>
+                <span class='fraction'>70/70</span>
             </div>
         
             
@@ -213,9 +213,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
@@ -239,9 +239,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">4x</span>
@@ -271,9 +271,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
@@ -294,12 +294,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
@@ -350,8 +350,8 @@ const getAllUsers = async (req,res) =&gt; {
 &nbsp;
 const createUser = async (req,res) =&gt;{
     const {username,password} = req.body;
-    <span class="missing-if-branch" title="if path not taken" >I</span>if(!username || !password){
-<span class="cstat-no" title="statement not covered" >        return res.status(400).json({msg:'Ingrese usuario y contraseña'});</span>
+    if(!username || !password){
+        return res.status(400).json({msg:'Ingrese usuario y contraseña'});
     }
     try {
         const user = await User.findOne({username});
@@ -376,8 +376,8 @@ const createUser = async (req,res) =&gt;{
 &nbsp;
 const loginUser = async (req,res) =&gt;{
     const {username,password} = req.body;
-    <span class="missing-if-branch" title="if path not taken" >I</span>if(!username || !password){
-<span class="cstat-no" title="statement not covered" >        return res.status(400).json({msg:'Ingrese usuario y contraseña'});</span>
+    if(!username || !password){
+        return res.status(400).json({msg:'Ingrese usuario y contraseña'});
     }
 &nbsp;
     try {
@@ -408,8 +408,8 @@ const loginUser = async (req,res) =&gt;{
 &nbsp;
 const findUser = async(req,res) =&gt;{
     const {username} = {username : req.params.id};
-    <span class="missing-if-branch" title="if path not taken" >I</span>if(!username){
-<span class="cstat-no" title="statement not covered" >        return res.status(400).json({msg:'Ingrese el usuario que desea buscar'});</span>
+    if(!username){
+        return res.status(400).json({msg:'Ingrese el usuario que desea buscar'});
     }
 &nbsp;
     try {
@@ -434,8 +434,8 @@ const updateUser = async(req,res) =&gt;{
     console.log(username);
     console.log(password);
     console.log(updatedPassword);
-    <span class="missing-if-branch" title="if path not taken" >I</span>if(!updatedPassword || !password){
-<span class="cstat-no" title="statement not covered" >        return res.status(400).json({msg:'Ingrese la contraseña actual y la nueva'});</span>
+    if(!updatedPassword || !password){
+        return res.status(400).json({msg:'Ingrese la contraseña actual y la nueva'});
     }
 &nbsp;
     try {
@@ -478,7 +478,7 @@ module.exports = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-03-01T03:24:28.982Z
+                at 2025-03-02T21:49:20.102Z
             </div>
         <script src="../prettify.js"></script>
         <script>

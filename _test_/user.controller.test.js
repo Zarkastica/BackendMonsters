@@ -1,164 +1,266 @@
-const request = require('supertest');
-const express = require('express');
-const mongoose = require('mongoose');
-const { getAllUsers, createUser, loginUser, findUser, updateUser, deleteUser } = require('../controllers/user.controller');
-const User = require('../models/user.model');
+// user.controller.test.js
 
-const app = express();
-app.use(express.json());
+const userController = require('./../controllers/user.controller');
+const User = require('./../models/user.model');
+const { generateToken } = require('../middlewares/jwtGenerate');
 
-app.get('/users', getAllUsers);
-app.post('/users', createUser);
-app.post('/users/login', loginUser);
-app.get('/users/:id', findUser);
-app.put('/users', updateUser);
-app.delete('/users/:id', deleteUser);
-
-jest.mock('../models/user.model');
-jest.mock('../middlewares/jwtGenerate', () => ({
-    generateToken: jest.fn().mockResolvedValue('fakeToken')
-}));
+jest.mock('./../models/user.model');
+jest.mock('../middlewares/jwtGenerate');
 
 describe('User Controller', () => {
-    beforeAll(async () => {
-        await mongoose.connect('mongodb://localhost:27017/test', { useNewUrlParser: true, useUnifiedTopology: true });
+  let mockReq, mockRes;
+
+  beforeEach(() => {
+    mockReq = {
+      body: {},
+      params: {},
+    };
+    mockRes = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('getAllUsers', () => {
+    it('deberia devolver todos los usuarios', async () => {
+      const mockUsers = [{ username: 'user1' }, { username: 'user2' }];
+      User.find.mockResolvedValue(mockUsers);
+
+      await userController.getAllUsers(mockReq, mockRes);
+
+      expect(User.find).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({ users: mockUsers });
     });
 
-    afterAll(async () => {
-        await mongoose.connection.close();
+    it('should return 500 on error', async () => {
+      User.find.mockRejectedValue(new Error('Database error'));
+
+      await userController.getAllUsers(mockReq, mockRes);
+
+      expect(User.find).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Hubo un error' });
+    });
+  });
+
+  describe('createUser', () => {
+    it('deberia crear un usuario exitosamente', async () => {
+      mockReq.body = { username: 'newUser', password: 'password' };
+      User.findOne.mockResolvedValue(null);
+      User.prototype.save.mockResolvedValue({});
+
+      await userController.createUser(mockReq, mockRes);
+
+      expect(User.findOne).toHaveBeenCalledWith({ username: 'newUser' });
+      expect(User.prototype.save).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Usuario registrado exitosamente' });
     });
 
-    describe('getAllUsers', () => {
-        it('should return all users', async () => {
-            User.find.mockResolvedValue([{ username: 'testuser' }]);
-            const res = await request(app).get('/users');
-            expect(res.status).toBe(200);
-            expect(res.body.users).toEqual([{ username: 'testuser' }]);
-        });
+    it('deberia devolver un error si el usuario ya existe', async () => {
+      mockReq.body = { username: 'existingUser', password: 'password' };
+      User.findOne.mockResolvedValue({ username: 'existingUser' });
 
-        it('should handle errors', async () => {
-            User.find.mockRejectedValue(new Error('Error'));
-            const res = await request(app).get('/users');
-            expect(res.status).toBe(500);
-            expect(res.body.msg).toBe('Hubo un error');
-        });
+      await userController.createUser(mockReq, mockRes);
+
+      expect(User.findOne).toHaveBeenCalledWith({ username: 'existingUser' });
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'El usuario existingUser ya existe' });
     });
 
-    describe('createUser', () => {
-        it('should create a new user', async () => {
-            User.findOne.mockResolvedValue(null);
-            User.prototype.save = jest.fn().mockResolvedValue({});
-            const res = await request(app).post('/users').send({ username: 'newuser', password: 'password' });
-            expect(res.status).toBe(200);
-            expect(res.body.msg).toBe('Usuario registrado exitosamente');
-        });
+    it('deberia devolver un error si el usuario o la contraseña ya existe', async () => {
+      mockReq.body = {};
 
-        it('should return error if user already exists', async () => {
-            User.findOne.mockResolvedValue({ username: 'existinguser' });
-            const res = await request(app).post('/users').send({ username: 'existinguser', password: 'password' });
-            expect(res.status).toBe(400);
-            expect(res.body.msg).toBe('El usuario existinguser ya existe');
-        });
+      await userController.createUser(mockReq, mockRes);
 
-        it('should handle errors', async () => {
-            User.findOne.mockRejectedValue(new Error('Error'));
-            const res = await request(app).post('/users').send({ username: 'newuser', password: 'password' });
-            expect(res.status).toBe(500);
-            expect(res.body.msg).toBe('Error inesperado');
-        });
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Ingrese usuario y contraseña' });
     });
 
-    describe('loginUser', () => {
-        it('should login user and return token', async () => {
-            User.findOne.mockResolvedValue({ username: 'testuser', password: 'password' });
-            const res = await request(app).post('/users/login').send({ username: 'testuser', password: 'password' });
-            expect(res.status).toBe(200);
-            expect(res.body.msg).toBe('Sesion iniciada');
-            expect(res.body.token).toBe('fakeToken');
-        });
+    it('deberia devolver un error de servidor', async () => {
+      mockReq.body = { username: 'newUser', password: 'password' };
+      User.findOne.mockRejectedValue(new Error('Database error'));
 
-        it('should return error if user does not exist', async () => {
-            User.findOne.mockResolvedValue(null);
-            const res = await request(app).post('/users/login').send({ username: 'nonexistentuser', password: 'password' });
-            expect(res.status).toBe(400);
-            expect(res.body.msg).toBe('El usuario no existe');
-        });
+      await userController.createUser(mockReq, mockRes);
 
-        it('should return error if password is incorrect', async () => {
-            User.findOne.mockResolvedValue({ username: 'testuser', password: 'wrongpassword' });
-            const res = await request(app).post('/users/login').send({ username: 'testuser', password: 'password' });
-            expect(res.status).toBe(400);
-            expect(res.body.msg).toBe('Contraseña incorrecta');
-        });
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Error inesperado' });
+    });
+  });
 
-        it('should handle errors', async () => {
-            User.findOne.mockRejectedValue(new Error('Error'));
-            const res = await request(app).post('/users/login').send({ username: 'testuser', password: 'password' });
-            expect(res.status).toBe(500);
-            expect(res.body.msg).toBe('Error inesperado');
-        });
+  describe('loginUser', () => {
+    it('deberia logear el usuario y devolver un token', async () => {
+      mockReq.body = { username: 'user', password: 'password' };
+      const mockUser = { username: 'user', password: 'password' };
+      const mockToken = 'mockToken';
+
+      User.findOne.mockResolvedValue(mockUser);
+      generateToken.mockResolvedValue(mockToken);
+
+      await userController.loginUser(mockReq, mockRes);
+
+      expect(User.findOne).toHaveBeenCalledWith({ username: 'user' });
+      expect(generateToken).toHaveBeenCalledWith('user', 'password');
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Sesion iniciada', token: mockToken });
     });
 
-    describe('findUser', () => {
-        it('should return user by username', async () => {
-            User.findOne.mockResolvedValue({ username: 'testuser', _id: '123' });
-            const res = await request(app).get('/users/testuser');
-            expect(res.status).toBe(200);
-            expect(res.body.User).toEqual({ username: 'testuser', id: '123' });
-        });
+    it('deberia devolver un error si el usuario no existe', async () => {
+      mockReq.body = { username: 'nonexistentUser', password: 'password' };
+      User.findOne.mockResolvedValue(null);
 
-        it('should return error if user does not exist', async () => {
-            User.findOne.mockResolvedValue(null);
-            const res = await request(app).get('/users/nonexistentuser');
-            expect(res.status).toBe(400);
-            expect(res.body.msg).toBe('El usuario no existe');
-        });
+      await userController.loginUser(mockReq, mockRes);
 
-        it('should handle errors', async () => {
-            User.findOne.mockRejectedValue(new Error('Error'));
-            const res = await request(app).get('/users/testuser');
-            expect(res.status).toBe(500);
-            expect(res.body.msg).toBe('Error inesperado');
-        });
+      expect(User.findOne).toHaveBeenCalledWith({ username: 'nonexistentUser' });
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'El usuario no existe' });
     });
 
-    describe('updateUser', () => {
-        it('should update user password', async () => {
-            User.findOne.mockResolvedValue({ username: 'testuser', password: 'password' });
-            User.updateOne.mockResolvedValue({});
-            const res = await request(app).put('/users').send({ username: 'testuser', password: 'password', updatedPassword: 'newpassword' });
-            expect(res.status).toBe(200);
-            expect(res.body.msg).toBe('Contraseña actualizada exitosamente');
-        });
+    it('deberia devolver un error si la contraseña es incorrecta', async () => {
+      mockReq.body = { username: 'user', password: 'wrongPassword' };
+      User.findOne.mockResolvedValue({ username: 'user', password: 'password' });
 
-        it('should return error if current password is incorrect', async () => {
-            User.findOne.mockResolvedValue({ username: 'testuser', password: 'wrongpassword' });
-            const res = await request(app).put('/users').send({ username: 'testuser', password: 'password', updatedPassword: 'newpassword' });
-            expect(res.status).toBe(400);
-            expect(res.body.msg).toBe('Contraseña incorrecta');
-        });
+      await userController.loginUser(mockReq, mockRes);
 
-        it('should handle errors', async () => {
-            User.findOne.mockRejectedValue(new Error('Error'));
-            const res = await request(app).put('/users').send({ username: 'testuser', password: 'password', updatedPassword: 'newpassword' });
-            expect(res.status).toBe(500);
-            expect(res.body.msg).toBe('Error inesperado');
-        });
+      expect(User.findOne).toHaveBeenCalledWith({ username: 'user' });
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Contraseña incorrecta' });
     });
 
-    describe('deleteUser', () => {
-        it('should delete user by username', async () => {
-            User.deleteOne.mockResolvedValue({});
-            const res = await request(app).delete('/users/testuser');
-            expect(res.status).toBe(200);
-            expect(res.body.msg).toBe('Usuario eliminado exitosamente');
-        });
+    it('deberia devolver un error si falta el usuario o contraseña', async () => {
+      mockReq.body = {};
 
-        it('should handle errors', async () => {
-            User.deleteOne.mockRejectedValue(new Error('Error'));
-            const res = await request(app).delete('/users/testuser');
-            expect(res.status).toBe(500);
-            expect(res.body.msg).toBe('Error inesperado');
-        });
+      await userController.loginUser(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Ingrese usuario y contraseña' });
     });
+
+    it('deberia devolver un error de servidor', async () => {
+      mockReq.body = { username: 'user', password: 'password' };
+      User.findOne.mockRejectedValue(new Error('Database error'));
+
+      await userController.loginUser(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Error inesperado' });
+    });
+  });
+
+  describe('findUser', () => {
+    it('deberia encontrar un usuario y devolverlo', async () => {
+      mockReq.params.id = 'user';
+      const mockUser = { username: 'user', _id: '123' };
+      User.findOne.mockResolvedValue(mockUser);
+
+      await userController.findUser(mockReq, mockRes);
+
+      expect(User.findOne).toHaveBeenCalledWith({ username: 'user' });
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({ User: { username: 'user', id: '123' } });
+    });
+
+    it('deberia devolver un error si el usuario no existe', async () => {
+      mockReq.params.id = 'nonexistentUser';
+      User.findOne.mockResolvedValue(null);
+
+      await userController.findUser(mockReq, mockRes);
+
+      expect(User.findOne).toHaveBeenCalledWith({ username: 'nonexistentUser' });
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'El usuario no existe' });
+    });
+
+    it('deberia devolver un error si falta el usuario', async () => {
+      mockReq.params.id = undefined;
+
+      await userController.findUser(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Ingrese el usuario que desea buscar' });
+    });
+
+    it('deberia devolver un error de servidor', async () => {
+      mockReq.params.id = 'user';
+      User.findOne.mockRejectedValue(new Error('Database error'));
+
+      await userController.findUser(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Error inesperado' });
+    });
+  });
+
+  describe('updateUser', () => {
+    it('deberia actualizar la contraseña', async () => {
+      mockReq.body = { username: 'user', password: 'oldPassword', updatedPassword: 'newPassword' };
+      User.findOne.mockResolvedValue({ username: 'user', password: 'oldPassword' });
+      User.updateOne.mockResolvedValue({});
+
+      await userController.updateUser(mockReq, mockRes);
+
+      expect(User.findOne).toHaveBeenCalledWith({ username: 'user' });
+      expect(User.updateOne).toHaveBeenCalledWith({ username: 'user' }, { password: 'newPassword' });
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Contraseña actualizada exitosamente' });
+    });
+
+    it('deberia devolver un error si la contraseña es incorrecta', async () => {
+      mockReq.body = { username: 'user', password: 'wrongPassword', updatedPassword: 'newPassword' };
+      User.findOne.mockResolvedValue({ username: 'user', password: 'oldPassword' });
+
+      await userController.updateUser(mockReq, mockRes);
+
+      expect(User.findOne).toHaveBeenCalledWith({ username: 'user' });
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Contraseña incorrecta' });
+    });
+
+    it('deberia devolver un error si falta el usuario o la contraseña', async () => {
+      mockReq.body = { username: 'user' };
+
+      await userController.updateUser(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Ingrese la contraseña actual y la nueva' });
+    });
+
+    it('deberia devolver un error de servidor', async () => {
+      mockReq.body = { username: 'user', password: 'oldPassword', updatedPassword: 'newPassword' };
+      User.findOne.mockRejectedValue(new Error('Database error'));
+
+      await userController.updateUser(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Error inesperado' });
+    });
+  });
+
+  describe('deleteUser', () => {
+    it('deberia eliminar un usuario', async () => {
+      mockReq.params.id = 'user';
+      User.deleteOne.mockResolvedValue({});
+
+      await userController.deleteUser(mockReq, mockRes);
+
+      expect(User.deleteOne).toHaveBeenCalledWith({ username: 'user' });
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Usuario eliminado exitosamente' });
+    });
+
+    it('deberia devolver un error de servidor', async () => {
+      mockReq.params.id = 'user';
+      User.deleteOne.mockRejectedValue(new Error('Database error'));
+
+      await userController.deleteUser(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Error inesperado' });
+    });
+  });
 });

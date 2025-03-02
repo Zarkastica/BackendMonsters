@@ -1,8 +1,6 @@
 const Disfraz = require('../models/disfraz.model');
 const Categoria = require('../models/categoria.model');
 const fs = require('fs');
-const multer = require('multer');
-const upload = multer({dest: 'uploads/'});
 
 const AgregarDisfraz = async (req, res) => {
     const {nombre, talla, color, precio, categoria} = req.body;
@@ -11,7 +9,7 @@ const AgregarDisfraz = async (req, res) => {
         if (!cat) {
             return res.status(404).json({msg: 'La categoría no existe'});
         }
-        saveImage(req.file);
+         saveImage(req.file);
         let data_Disfraz = new Disfraz({
             nombre,
             talla,
@@ -21,24 +19,24 @@ const AgregarDisfraz = async (req, res) => {
             imagen: req.file.originalname
         });
         await data_Disfraz.save()
-        data_Disfraz.populate('categoria');
-        res.send(data_Disfraz)
+        return res.status(200).send('Producto agregado exitosamente')
     } catch (error) {
         console.log(error)
         res.status(500).send('Hubo un error, contáctanos')
     }
 }
 
-const traerDisfraz = async (req, res)=>{
+const traerDisfraz = async (req, res) => {
+    console.log('Controller: traerDisfraz called');
     try {
-        const disfraces = await Disfraz.find().populate('categoria');
-        return res.status(200).json({disfraces});
-    
+      const disfraces = await Disfraz.find().populate('categoria');
+      console.log('Controller: find and populate completed');
+      return res.status(200).json({ disfraces });
     } catch (error) {
-        console.log(error);
-        return res.status(500).send('Hubo un error en el servidor');
+      console.log('Controller: Error caught', error);
+      return res.status(500).json({ msg: 'Hubo un error en el servidor' });
     }
-}
+  }
 
 
 const traerDisfrazPorId = async (req,res) => {

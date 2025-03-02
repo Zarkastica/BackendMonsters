@@ -1,119 +1,239 @@
-const request = require('supertest');
-const express = require('express');
-const mongoose = require('mongoose');
+// disfraz.controller.test.js
+
+const disfrazController = require('../controllers/disfraz.controller');
 const Disfraz = require('../models/disfraz.model');
 const Categoria = require('../models/categoria.model');
-const disfrazController = require('../controllers/disfraz.controller');
+const fs = require('fs');
+jest.useFakeTimers();
+jest.mock('../models/disfraz.model');
+jest.mock('../models/categoria.model');
+jest.mock('fs');
 
-const app = express();
-app.use(express.json());
-app.post('/disfraz', disfrazController.AgregarDisfraz);
-app.get('/disfraz', disfrazController.traerDisfraz);
-app.get('/disfraz/:id', disfrazController.traerDisfrazPorId);
-app.put('/disfraz/:id', disfrazController.actualizarDisfrazPorId);
-app.delete('/disfraz/:id', disfrazController.eliminarDisfrazPorId);
+
 
 describe('Disfraz Controller', () => {
-    beforeAll(async () => {
-        const url = `mongodb://127.0.0.1/disfraz_test`;
-        await mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true });
+    let mockReq, mockRes;
+
+    beforeEach(() => {
+        jest.mock('fs', () => ({
+            renameSync: jest.fn(),
+            createReadStream: jest.fn(),
+        }));
+        mockReq = {
+            body: {},
+            params: {},
+            file: {
+                path: 'temp/path',
+                originalname: 'test.jpg',
+            },
+        };
+        mockRes = {
+            status: jest.fn().mockReturnThis(),
+            json: jest.fn(),
+            send: jest.fn(),
+            pipe: jest.fn(),
+        };
     });
 
-    afterAll(async () => {
-        await mongoose.connection.db.dropDatabase();
-        await mongoose.connection.close();
+    afterEach(() => {
+        jest.clearAllMocks();
     });
 
-    let categoriaId;
-
-    beforeEach(async () => {
-        const categoria = new Categoria({ nombre: 'Categoria Test' });
-        await categoria.save();
-        categoriaId = categoria._id;
-    });
-
-    afterEach(async () => {
-        await Disfraz.deleteMany({});
-        await Categoria.deleteMany({});
-    });
-
-    it('should create a new disfraz', async () => {
-        const res = await request(app)
-            .post('/disfraz')
-            .send({
-                nombre: 'Disfraz Test',
+    describe('AgregarDisfraz', () => {
+        it('Deberia agregar un disfraz con exito', async () => {
+            mockReq.body = {
+                nombre: 'Test Disfraz',
                 talla: 'M',
-                color: 'Rojo',
-                precio: 100,
-                categoria: 'Categoria Test'
-            });
+                color: 'Red',
+                precio: 50,
+                categoria: 'Test Category',
+            };
+            const mockCategory = { _id: 'category_id' };
+            const mockDisfraz = {
+                nombre: 'Test Disfraz',
+                talla: 'M',
+                color: 'Red',
+                precio: 50,
+                categoria: 'category_id',
+                imagen: 'test.jpg',
+                save: jest.fn().mockResolvedValue({}),
+            };
+            disfrazController.saveImage = jest.fn().mockReturnValue(`uploads/${mockReq.file.originalname}`);
+            Categoria.findOne.mockResolvedValue(mockCategory);
+            Disfraz.prototype.save = mockDisfraz.save;
+            Disfraz.prototype.populate = mockDisfraz.populate;
+            fs.renameSync.mockReturnValue();
 
-        expect(res.statusCode).toEqual(200);
-        expect(res.body).toHaveProperty('_id');
-        expect(res.body.nombre).toBe('Disfraz Test');
+            await disfrazController.AgregarDisfraz(mockReq, mockRes);
+
+            expect(Categoria.findOne).toHaveBeenCalledWith({ nombre: 'Test Category' });
+            expect(fs.renameSync).toHaveBeenCalled();
+            expect(mockDisfraz.save).toHaveBeenCalled();
+            expect(mockRes.send).toHaveBeenCalledWith('Producto agregado exitosamente');
+        });
+
+        it('deberia devolver un error porque la categoria no existe', async () => {
+            mockReq.body = { categoria: 'No existe' };
+            Categoria.findOne.mockResolvedValue(null);
+
+            await disfrazController.AgregarDisfraz(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(404);
+            expect(mockRes.json).toHaveBeenCalledWith({ msg: 'La categoría no existe' });
+        });
+
+        it('deberia devolver un error de servidor', async () => {
+            mockReq.body = { categoria: 'Test Category' };
+            Categoria.findOne.mockRejectedValue(new Error('Database error'));
+
+            await disfrazController.AgregarDisfraz(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(500);
+            expect(mockRes.send).toHaveBeenCalledWith('Hubo un error, contáctanos');
+        });
     });
 
-    it('should get all disfraces', async () => {
-        const disfraz = new Disfraz({
-            nombre: 'Disfraz Test',
-            talla: 'M',
-            color: 'Rojo',
-            precio: 100,
-            categoria: categoriaId
-        });
-        await disfraz.save();
+    describe('traerDisfraz', () => {
 
-        const res = await request(app).get('/disfraz');
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.disfraces.length).toBe(1);
-        expect(res.body.disfraces[0].nombre).toBe('Disfraz Test');
+        it('deberia traer todos los disfraces', async () => {
+            const mockDisfraces = [{ nombre: 'Disfraz 1', categoria: 'someCategoryId' }, { nombre: 'Disfraz 2', categoria: 'anotherCategoryId' }];
+            const mockFind = {
+                populate: jest.fn().mockResolvedValue(mockDisfraces),
+            };
+            Disfraz.find.mockReturnValue(mockFind);
+
+            await disfrazController.traerDisfraz(mockReq, mockRes);
+
+            expect(Disfraz.find).toHaveBeenCalled();
+            expect(mockFind.populate).toHaveBeenCalledWith('categoria');
+            expect(mockRes.status).toHaveBeenCalledWith(200);
+            expect(mockRes.json).toHaveBeenCalledWith({ disfraces: mockDisfraces });
+        });
+
+        it('deberia devolver un error de servidor', async () => {
+            const mockFind = {
+                populate: jest.fn().mockRejectedValue(new Error('Database error')),
+            };
+        
+            Disfraz.find.mockReturnValue(mockFind);
+        
+            await disfrazController.traerDisfraz(mockReq, mockRes);
+        
+            expect(mockRes.status).toHaveBeenCalledWith(500);
+            expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Hubo un error en el servidor' });
+        });
     });
 
-    it('should get a disfraz by id', async () => {
-        const disfraz = new Disfraz({
-            nombre: 'Disfraz Test',
-            talla: 'M',
-            color: 'Rojo',
-            precio: 100,
-            categoria: categoriaId
-        });
-        await disfraz.save();
+    describe('traerDisfrazPorId', () => {
+        it('deberia devolver un disfraz con el id', async () => {
+            mockReq.params.id = 'disfraz_id';
+            const mockDisfraz = { nombre: 'Test Disfraz' };
+            Disfraz.findById.mockResolvedValue(mockDisfraz);
 
-        const res = await request(app).get(`/disfraz/${disfraz._id}`);
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.nombre).toBe('Disfraz Test');
+            await disfrazController.traerDisfrazPorId(mockReq, mockRes);
+
+            expect(Disfraz.findById).toHaveBeenCalledWith('disfraz_id');
+            expect(mockRes.json).toHaveBeenCalledWith(mockDisfraz);
+        });
+
+        it('deberia devolver un error al no encontrar el disfraz', async () => {
+            mockReq.params.id = 'disfraz_id';
+            Disfraz.findById.mockResolvedValue(null);
+
+            await disfrazController.traerDisfrazPorId(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(404);
+            expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Producto no encontrado' });
+        });
+
+        it('deberia devolver un error de servidor', async () => {
+            mockReq.params.id = 'disfraz_id';
+            Disfraz.findById.mockRejectedValue(new Error('Database error'));
+
+            await disfrazController.traerDisfrazPorId(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(500);
+            expect(mockRes.send).toHaveBeenCalledWith('Hubo un error con el servidor :(');
+        });
     });
 
-    it('should update a disfraz by id', async () => {
-        const disfraz = new Disfraz({
-            nombre: 'Disfraz Test',
-            talla: 'M',
-            color: 'Rojo',
-            precio: 100,
-            categoria: categoriaId
+    describe('actualizarDisfrazPorId', () => {
+        it('deberia actualizar un disfraz con el id', async () => {
+            mockReq.params.id = 'disfraz_id';
+            mockReq.body = { nombre: 'Updated Disfraz' };
+            const mockDisfraz = { nombre: 'Updated Disfraz' };
+            Disfraz.findByIdAndUpdate.mockResolvedValue(mockDisfraz);
+
+            await disfrazController.actualizarDisfrazPorId(mockReq, mockRes);
+
+            expect(Disfraz.findByIdAndUpdate).toHaveBeenCalledWith('disfraz_id', { nombre: 'Updated Disfraz' });
+            expect(mockRes.json).toHaveBeenCalledWith(mockDisfraz);
         });
-        await disfraz.save();
 
-        const res = await request(app)
-            .put(`/disfraz/${disfraz._id}`)
-            .send({ nombre: 'Disfraz Updated' });
+        it('deberia devolver un error al no encontrarlo', async () => {
+            mockReq.params.id = 'disfraz_id';
+            Disfraz.findByIdAndUpdate.mockResolvedValue(null);
 
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.nombre).toBe('Disfraz Updated');
+            await disfrazController.actualizarDisfrazPorId(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(404);
+            expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Producto no encontrado' });
+        });
+
+        it('deberia devolver un error de servidor', async () => {
+            mockReq.params.id = 'disfraz_id';
+            Disfraz.findByIdAndUpdate.mockRejectedValue(new Error('Database error'));
+
+            await disfrazController.actualizarDisfrazPorId(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(500);
+            expect(mockRes.send).toHaveBeenCalledWith('Hubo un error con el servidor :(');
+        });
     });
 
-    it('should delete a disfraz by id', async () => {
-        const disfraz = new Disfraz({
-            nombre: 'Disfraz Test',
-            talla: 'M',
-            color: 'Rojo',
-            precio: 100,
-            categoria: categoriaId
-        });
-        await disfraz.save();
+    describe('eliminarDisfrazPorId', () => {
+        it('deberia eliminar un disfraz con el id', async () => {
+            mockReq.params.id = 'disfraz_id';
+            const mockDisfraz = { nombre: 'Deleted Disfraz' };
+            Disfraz.findByIdAndDelete.mockResolvedValue(mockDisfraz);
 
-        const res = await request(app).delete(`/disfraz/${disfraz._id}`);
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.nombre).toBe('Disfraz Test');
+            await disfrazController.eliminarDisfrazPorId(mockReq, mockRes);
+
+            expect(Disfraz.findByIdAndDelete).toHaveBeenCalledWith('disfraz_id');
+            expect(mockRes.json).toHaveBeenCalledWith(mockDisfraz);
+        });
+
+        it('deberia devolver un error al no encontrar el disfraz', async () => {
+            mockReq.params.id = 'disfraz_id';
+            Disfraz.findByIdAndDelete.mockResolvedValue(null);
+
+            await disfrazController.eliminarDisfrazPorId(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(404);
+            expect(mockRes.json).toHaveBeenCalledWith({ msg: 'Producto no encontrado' });
+        });
+
+        it('deberia devolver un error de servidor', async () => {
+            mockReq.params.id = 'disfraz_id';
+            Disfraz.findByIdAndDelete.mockRejectedValue(new Error('Database error'));
+
+            await disfrazController.eliminarDisfrazPorId(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(500);
+            expect(mockRes.send).toHaveBeenCalledWith('Hubo un error con el servidor :(');
+        });
+    });
+
+    describe('getImage', () => {
+        it('deberia devolver una imagen', () => {
+            mockReq.params.name = { imagen: 'test.jpg' };
+            const mockReadStream = { pipe: jest.fn() };
+            fs.createReadStream.mockReturnValue(mockReadStream);
+
+            disfrazController.getImage(mockReq, mockRes);
+
+            expect(fs.createReadStream).toHaveBeenCalledWith('uploads/test.jpg');
+            expect(mockReadStream.pipe).toHaveBeenCalledWith(mockRes);
+        });
     });
 });
