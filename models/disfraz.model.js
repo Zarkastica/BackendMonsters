@@ -1,31 +1,29 @@
-const mongoose = require('mongoose');
-
-const DisfrazSchema = new mongoose.Schema({
+const mongoose = require('mongoose')
+const DisfrazSchema = mongoose.Schema({
     nombre: {
         type: String,
-        required: true
+        default: true
     },
-    talla: {
+    talla:{
         type: String,
         required: true
     },
-    color: {
+    color:{
         type: String,
         required: true
     },
-    precio: {
-        type: Number,
+    precio:{
+        type: String,
+        required:true
+    },
+    categoria:{ //referencia a la categoria
+        type: mongoose.Types.ObjectId, ref: "Categorias",
         required: true
     },
-    categoria: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Categoria',
-        required: true
-    },
-    imageUrl: {
+    imagen:{ //ruta de la imagen
         type: String,
         required: true
     }
-});
 
-module.exports = mongoose.model('Disfraz', DisfrazSchema);
+})
+module.exports = mongoose.model('Disfraces', DisfrazSchema)

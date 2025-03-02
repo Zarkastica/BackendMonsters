@@ -27,10 +27,8 @@ const AgregarDisfraz = async (req, res) => {
 }
 
 const traerDisfraz = async (req, res) => {
-    console.log('Controller: traerDisfraz called');
     try {
       const disfraces = await Disfraz.find().populate('categoria');
-      console.log('Controller: find and populate completed');
       return res.status(200).json({ disfraces });
     } catch (error) {
       console.log('Controller: Error caught', error);
