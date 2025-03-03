@@ -7,7 +7,7 @@ const {AgregarDisfraz,traerDisfraz,traerDisfrazPorId,actualizarDisfrazPorId,elim
 router.post('/Disfraz',upload.single('imagen'),AgregarDisfraz)
 router.get('/Disfraz',traerDisfraz)
 router.get('/Disfraz/:id',traerDisfrazPorId)
-router.put('/Disfraz/:id',actualizarDisfrazPorId);
+router.put('/Disfraz/:id',upload.single('imagen'),actualizarDisfrazPorId);
 router.delete('/Disfraz/:id',eliminarDisfrazPorId);
 router.get('/imagen/:name',getImage);
 module.exports = router
